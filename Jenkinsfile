@@ -62,7 +62,7 @@ pipeline {
                         steps{
                             script{
                                 withDockerRegistry(credentialsId: 'docker-cred',toolName: 'docker'){
-                                        sh "docker run -d -p 8080:8080 --name gowebapp vinay7944/go-web-app:latest"
+                                        sh "docker run -d -p 3000:3000 --name gowebapp vinay7944/go-web-app:latest"
                                 }
                             }
                         }
