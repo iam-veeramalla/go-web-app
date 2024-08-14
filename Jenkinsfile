@@ -29,15 +29,10 @@ pipeline {
 
        stage('Run SonarQube Analysis') {
             steps {
-                script {
-                    sh '''
-                        ${SCANNER_HOME}/bin/sonar-scanner \
-                          -Dsonar.projectKey=gowebapp \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=http://localhost:9000 \
-                          -Dsonar.login=${SONAR_TOKEN}
-                    '''
+                withSonarQubeEnv('sonar'){
+                        sh "${SCANNER_HOME}/bin/sonar-scanner -Dsonar.projectKey=gowebapp -Dsonar.projectName=gowebapp"
                 }
+                
             }
         }
 
