@@ -8,11 +8,20 @@ pipeline {
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
         SONAR_TOKEN = credentials('sonar-cred')
-        GITHUB_TOKEN = credentials('git-cred') // Jenkins credential ID for the GitHub token
-        DOCKER_CRED = credentials('docker-cred') // Jenkins credential ID for Docker Hub username and password
+        GITHUB_TOKEN = credentials('git-cred')
+        DOCKER_CRED = credentials('docker-cred')
     }
 
     stages {
+        stage('Checkout Code') {
+            steps {
+                script {
+                    // Checkout the main branch
+                    checkout scm
+                }
+            }
+        }
+
         stage('Build') {
             steps {
                 sh "go build -o go-web-app"
@@ -45,7 +54,6 @@ pipeline {
         stage('Docker Build & Tag') {
             steps {
                 script {
-                    // Build and tag the Docker image with the commit ID
                     withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                         sh """
                             docker build -t ${DOCKER_USERNAME}/go-web-app:${env.COMMIT_ID} .
@@ -59,7 +67,6 @@ pipeline {
         stage('Docker Push Image') {
             steps {
                 script {
-                    // Push Docker images with commit ID and latest tag
                     withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                         sh """
                             echo ${DOCKER_PASSWORD} | docker login --username ${DOCKER_USERNAME} --password-stdin
