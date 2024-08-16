@@ -8,7 +8,7 @@ pipeline {
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
         SONAR_TOKEN = credentials('sonar-cred')
-        GITHUB_TOKEN = credentials('git-cred') // Jenkins credential ID for the GitHub token
+        GITHUB_SSH_KEY = credentials('gitssh-cred') // Jenkins SSH key ID for GitHub
         DOCKER_CRED = credentials('docker-cred') // Docker credentials
     }
 
@@ -23,6 +23,7 @@ pipeline {
                     sh """
                     git config --global user.email "vinaychowdarychitturi@gmail.com"
                     git config --global user.name "vinay chitturi"
+                    git remote set-url origin git@github.com:vinnu2251/go-web-app.git
                     """
 
                     // Debugging steps
@@ -101,7 +102,7 @@ pipeline {
                     sh """
                     git add helm/go-web-app-chart/values.yaml
                     git commit -m "Update tag in Helm chart with commit ID ${commitId}"
-                    git push origin ${branchName}
+                    git push origin HEAD
                     """
                 }
             }
