@@ -9,6 +9,7 @@ pipeline {
         SCANNER_HOME = tool 'sonar-scanner'
         SONAR_TOKEN = credentials('sonar-cred')
         GITHUB_TOKEN = credentials('git-cred') // Jenkins credential ID for the GitHub token
+        DOCKER_CRED = credentials('docker-cred') // Jenkins credential ID for Docker Hub username and password
     }
 
     stages {
@@ -32,11 +33,24 @@ pipeline {
             }
         }
 
+        stage('Get Commit ID') {
+            steps {
+                script {
+                    // Get the commit ID
+                    env.COMMIT_ID = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                }
+            }
+        }
+
         stage('Docker Build & Tag') {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh 'docker build -t vinay7944/go-web-app:v1 .'
+                    // Build and tag the Docker image with the commit ID
+                    withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh """
+                            docker build -t ${DOCKER_USERNAME}/go-web-app:${env.COMMIT_ID} .
+                            docker tag ${DOCKER_USERNAME}/go-web-app:${env.COMMIT_ID} ${DOCKER_USERNAME}/go-web-app:latest
+                        """
                     }
                 }
             }
@@ -45,8 +59,13 @@ pipeline {
         stage('Docker Push Image') {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh 'docker push vinay7944/go-web-app:v1'
+                    // Push Docker images with commit ID and latest tag
+                    withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh """
+                            echo ${DOCKER_PASSWORD} | docker login --username ${DOCKER_USERNAME} --password-stdin
+                            docker push ${DOCKER_USERNAME}/go-web-app:${env.COMMIT_ID}
+                            docker push ${DOCKER_USERNAME}/go-web-app:latest
+                        """
                     }
                 }
             }
@@ -55,28 +74,19 @@ pipeline {
         stage('Update Helm Chart Tag') {
             steps {
                 script {
-                    // Checkout the repository
-                    checkout scm
-
-                    // Update tag in Helm chart
-                    sh '''
-                        sed -i 's/tag: .*/tag: "${BUILD_NUMBER}"/' helm/go-web-app-chart/values.yaml
-                    '''
+                    // Update tag in Helm chart with commit ID
+                    sh """
+                        sed -i 's/tag: .*/tag: "${env.COMMIT_ID}"/' helm/go-web-app-chart/values.yaml
+                    """
 
                     // Configure Git and commit changes
-                    sh '''
-                        git config --global user.email "abhishek@gmail.com"
-                        git config --global user.name "Abhishek Veeramalla"
+                    sh """
+                        git config --global user.email "vinaychowdarychitturi@gmail.com"
+                        git config --global user.name "vinnu2251"
                         git add helm/go-web-app-chart/values.yaml
-                        git commit -m "Update tag in Helm chart"
-                    '''
-
-                    // Push changes to the repository
-                    withCredentials([usernamePassword(credentialsId: 'git-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
-                        sh '''
-                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/vinnu2251/go-web-app.git
-                        '''
-                    }
+                        git commit -m "Update tag in Helm chart with commit ID ${env.COMMIT_ID}"
+                        git push origin main
+                    """
                 }
             }
         }
