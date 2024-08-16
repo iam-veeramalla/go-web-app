@@ -2,14 +2,13 @@ pipeline {
     agent any
 
     tools {
-        go 'go-1.22.5'
+       go 'go-1.22.5'
     }
 
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
         SONAR_TOKEN = credentials('sonar-cred')
         GITHUB_TOKEN = credentials('git-cred')
-        DOCKER_USERNAME = 'vinay7944'
     }
 
     stages {
@@ -37,7 +36,7 @@ pipeline {
             steps {
                 script {
                     COMMIT_ID = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    sh "docker build -t ${DOCKER_USERNAME}/go-web-app:${COMMIT_ID} ."
+                    sh 'docker build -t vinay7944/go-web-app:${COMMIT_ID} .'
                 }
             }
         }
@@ -45,11 +44,8 @@ pipeline {
         stage('Docker Push Image') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh """
-                            echo ${DOCKER_PASSWORD} | docker login --username ${DOCKER_USERNAME} --password-stdin
-                            docker push ${DOCKER_USERNAME}/go-web-app:${COMMIT_ID}
-                        """
+                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                        sh "docker push vinay7944/go-web-app:${COMMIT_ID}"
                     }
                 }
             }
@@ -58,12 +54,13 @@ pipeline {
         stage('Update Helm Chart with Commit ID') {
             steps {
                 script {
+                    sh "git checkout main" // Ensures you are on the main branch
                     sh "sed -i 's/tag: .*/tag: \"${COMMIT_ID}\"/' helm/go-web-app-chart/values.yaml"
-                    sh "git config --global user.email 'vinaychowdarychitturi@gmail.com'"
-                    sh "git config --global user.name 'vinnu2251'"
+                    sh 'git config --global user.email "vinaychowdarychitturi@gmail.com"'
+                    sh 'git config --global user.name "vinnu2251"'
                     sh "git add helm/go-web-app-chart/values.yaml"
                     sh "git commit -m 'Update tag in Helm chart with commit ID ${COMMIT_ID}'"
-                    sh "git push origin ${env.BRANCH_NAME}"
+                    sh "git push origin main"
                 }
             }
         }
@@ -71,7 +68,7 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline completed"
+            echo "Pipeline execution completed."
         }
     }
 }
