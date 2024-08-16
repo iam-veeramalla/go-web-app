@@ -8,26 +8,31 @@ pipeline {
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
         SONAR_TOKEN = credentials('sonar-cred')
-        GITHUB_TOKEN = credentials('git-cred')
-        DOCKER_CRED = credentials('docker-cred')
-        COMMIT_ID = ""
+        GITHUB_TOKEN = credentials('git-cred') // Your GitHub token
+        DOCKER_CREDENTIALS = credentials('docker-cred') // Docker credentials
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                checkout([$class: 'GitSCM', branches: [[name: 'main']], 
-                          userRemoteConfigs: [[url: 'git@github.com:vinnu2251/go-web-app.git', 
-                                               credentialsId: 'git-ssh-cred']]])
+                script {
+                    // Use the GitHub token for authentication
+                    withCredentials([string(credentialsId: 'git-cred', variable: 'GITHUB_TOKEN')]) {
+                        sh '''
+                        git config --global url."https://github.com/".insteadOf git@github.com:
+                        git config --global user.email "vinaychowdarychitturi@gmail.com"
+                        git config --global user.name "vinnu2251"
+                        git clone https://github.com/vinnu2251/go-web-app.git
+                        cd go-web-app
+                        '''
+                    }
+                }
             }
         }
 
         stage('Build') {
             steps {
-                script {
-                    COMMIT_ID = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    sh "go build -o go-web-app"
-                }
+                sh "go build -o go-web-app"
             }
         }
 
@@ -48,9 +53,9 @@ pipeline {
         stage('Docker Build & Tag') {
             steps {
                 script {
+                    def commitId = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     withDockerRegistry(credentialsId: 'docker-cred') {
-                        sh "docker build -t vinay7944/go-web-app:${COMMIT_ID} ."
-                        sh "docker tag vinay7944/go-web-app:${COMMIT_ID} vinay7944/go-web-app:latest"
+                        sh "docker build -t vinay7944/go-web-app:${commitId} ."
                     }
                 }
             }
@@ -59,9 +64,9 @@ pipeline {
         stage('Docker Push Image') {
             steps {
                 script {
+                    def commitId = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     withDockerRegistry(credentialsId: 'docker-cred') {
-                        sh "docker push vinay7944/go-web-app:${COMMIT_ID}"
-                        sh "docker push vinay7944/go-web-app:latest"
+                        sh "docker push vinay7944/go-web-app:${commitId}"
                     }
                 }
             }
@@ -70,14 +75,13 @@ pipeline {
         stage('Update Helm Chart with Commit ID') {
             steps {
                 script {
-                    sh "sed -i 's/tag: .*/tag: \"${COMMIT_ID}\"/' helm/go-web-app-chart/values.yaml"
-                    sh '''
-                        git config --global user.email "vinaychowdarychitturi@gmail.com"
-                        git config --global user.name "vinnu2251"
-                        git add helm/go-web-app-chart/values.yaml
-                        git commit -m "Update tag in Helm chart with commit ID ${COMMIT_ID}"
-                        git push origin main
-                    '''
+                    def commitId = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    sh """
+                    sed -i 's/tag: .*/tag: "${commitId}"/' helm/go-web-app-chart/values.yaml
+                    git add helm/go-web-app-chart/values.yaml
+                    git commit -m "Update tag in Helm chart with commit ID ${commitId}"
+                    git push origin main
+                    """
                 }
             }
         }
