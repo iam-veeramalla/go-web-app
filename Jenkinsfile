@@ -65,8 +65,8 @@ pipeline {
 
                     // Configure Git and commit changes
                     sh '''
-                        git config --global user.email "abhishek@gmail.com"
-                        git config --global user.name "Abhishek Veeramalla"
+                        git config --global user.email "vinaychowdarychitturi@gmail.com"
+                        git config --global user.name "vinay chitturi"
                         git add helm/go-web-app-chart/values.yaml
                         git commit -m "Update tag in Helm chart"
                     '''
@@ -74,7 +74,7 @@ pipeline {
                     // Push changes to the repository
                     withCredentials([usernamePassword(credentialsId: 'git-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
                         sh '''
-                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/your-repo/your-repo-name.git
+                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/vinnu2251/go-web-app.git
                         '''
                     }
                 }
