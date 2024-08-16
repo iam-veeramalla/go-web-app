@@ -9,20 +9,25 @@ pipeline {
         SCANNER_HOME = tool 'sonar-scanner'
         SONAR_TOKEN = credentials('sonar-cred')
         GITHUB_TOKEN = credentials('git-cred')
+        DOCKER_CRED = credentials('docker-cred')
+        COMMIT_ID = ""
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                // Checkout the code from the GitHub repository and switch to the main branch
-                checkout scm
-                sh 'git checkout main'
+                checkout([$class: 'GitSCM', branches: [[name: 'main']], 
+                          userRemoteConfigs: [[url: 'git@github.com:vinnu2251/go-web-app.git', 
+                                               credentialsId: 'git-ssh-cred']]])
             }
         }
 
         stage('Build') {
             steps {
-                sh "go build -o go-web-app"
+                script {
+                    COMMIT_ID = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    sh "go build -o go-web-app"
+                }
             }
         }
 
@@ -43,12 +48,9 @@ pipeline {
         stage('Docker Build & Tag') {
             steps {
                 script {
-                    // Get the short commit ID
-                    COMMIT_ID = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    echo "Commit ID: ${COMMIT_ID}"
-                    // Build and tag the Docker image using the commit ID
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
                         sh "docker build -t vinay7944/go-web-app:${COMMIT_ID} ."
+                        sh "docker tag vinay7944/go-web-app:${COMMIT_ID} vinay7944/go-web-app:latest"
                     }
                 }
             }
@@ -57,9 +59,9 @@ pipeline {
         stage('Docker Push Image') {
             steps {
                 script {
-                    // Push the Docker image to Docker Hub
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
                         sh "docker push vinay7944/go-web-app:${COMMIT_ID}"
+                        sh "docker push vinay7944/go-web-app:latest"
                     }
                 }
             }
@@ -68,17 +70,14 @@ pipeline {
         stage('Update Helm Chart with Commit ID') {
             steps {
                 script {
-                    // Update the Helm chart values with the new Docker image tag (commit ID)
                     sh "sed -i 's/tag: .*/tag: \"${COMMIT_ID}\"/' helm/go-web-app-chart/values.yaml"
-                    
-                    // Commit and push the changes to the Helm chart
-                    sh """
+                    sh '''
                         git config --global user.email "vinaychowdarychitturi@gmail.com"
                         git config --global user.name "vinnu2251"
                         git add helm/go-web-app-chart/values.yaml
                         git commit -m "Update tag in Helm chart with commit ID ${COMMIT_ID}"
                         git push origin main
-                    """
+                    '''
                 }
             }
         }
@@ -86,7 +85,7 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline complete."
+            echo "Pipeline completed"
         }
     }
 }
