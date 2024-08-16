@@ -8,7 +8,7 @@ pipeline {
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
         SONAR_TOKEN = credentials('sonar-cred')
-        GITHUB_SSH_KEY = credentials('gitssh-cred') // Jenkins SSH key ID for GitHub
+        GITHUB_TOKEN = credentials('git-cred') // Jenkins credential ID for the GitHub token
         DOCKER_CRED = credentials('docker-cred') // Docker credentials
     }
 
@@ -16,19 +16,20 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 script {
-                    // Checkout the repository
-                    checkout scm
+                    // Use HTTPS URL with GitHub token for authentication
+                    checkout([$class: 'GitSCM',
+                        branches: [[name: '*/main']], // Replace 'main' with your branch
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/vinnu2251/go-web-app.git',
+                            credentialsId: 'git-cred'
+                        ]]
+                    ])
 
                     // Configure Git for Jenkins
                     sh """
                     git config --global user.email "vinaychowdarychitturi@gmail.com"
                     git config --global user.name "vinay chitturi"
-                    git remote set-url origin git@github.com:vinnu2251/go-web-app.git
                     """
-
-                    // Debugging steps
-                    sh 'git status'           // Show current status of the working directory
-                    sh 'git branch -a'        // List all branches
                 }
             }
         }
@@ -84,26 +85,15 @@ pipeline {
                     def branchName = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
                     echo "Current branch: ${branchName}"
 
-                    // Debugging steps for updating Helm chart
+                    // Update the Helm chart with the new tag
                     sh """
-                    echo "Current directory:"
-                    pwd
-                    echo "Listing files:"
-                    ls -l
-                    echo "Checking Helm chart values:"
-                    cat helm/go-web-app-chart/values.yaml
-                    echo "Updating tag in Helm chart"
                     sed -i 's/tag: .*/tag: "${commitId}"/' helm/go-web-app-chart/values.yaml
-                    echo "Updated Helm chart values:"
-                    cat helm/go-web-app-chart/values.yaml
-                    """
-
-                    // Add, commit, and push changes
-                    sh """
                     git add helm/go-web-app-chart/values.yaml
                     git commit -m "Update tag in Helm chart with commit ID ${commitId}"
-                    git push origin HEAD
                     """
+
+                    // Push changes using the Git Push Plugin
+                    gitPush branch: branchName, credentialsId: 'git-cred', pushTags: true
                 }
             }
         }
