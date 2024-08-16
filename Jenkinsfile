@@ -8,7 +8,7 @@ pipeline {
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
         SONAR_TOKEN = credentials('sonar-cred')
-        GITHUB_TOKEN = credentials('git-cred') // Jenkins credential ID for the GitHub token
+        GITHUB_TOKEN = credentials('git-cred') // GitHub token
         DOCKER_CRED = credentials('docker-cred') // Docker credentials
     }
 
@@ -16,17 +16,12 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 script {
-                    // Use HTTPS URL with GitHub token for authentication
-                    checkout([$class: 'GitSCM',
-                        branches: [[name: '*/main']], // Replace 'main' with your branch
-                        userRemoteConfigs: [[
-                            url: 'https://github.com/vinnu2251/go-web-app.git',
-                            credentialsId: 'git-cred'
-                        ]]
-                    ])
+                    // Checkout the repository
+                    checkout scm
 
-                    // Configure Git for Jenkins
+                    // Set the remote URL to HTTPS and use the GitHub token
                     sh """
+                    git remote set-url origin https://vinnu2251:${GITHUB_TOKEN}@github.com/vinnu2251/go-web-app.git
                     git config --global user.email "vinaychowdarychitturi@gmail.com"
                     git config --global user.name "vinay chitturi"
                     """
@@ -88,12 +83,14 @@ pipeline {
                     // Update the Helm chart with the new tag
                     sh """
                     sed -i 's/tag: .*/tag: "${commitId}"/' helm/go-web-app-chart/values.yaml
-                    git add helm/go-web-app-chart/values.yaml
-                    git commit -m "Update tag in Helm chart with commit ID ${commitId}"
                     """
 
-                    // Push changes using the Git Push Plugin
-                    gitPush branch: branchName, credentialsId: 'git-cred', pushTags: true
+                    // Add, commit, and push the changes using the GitHub token
+                    sh """
+                    git add helm/go-web-app-chart/values.yaml
+                    git commit -m "Update tag in Helm chart with commit ID ${commitId}"
+                    git push origin HEAD:${branchName}
+                    """
                 }
             }
         }
