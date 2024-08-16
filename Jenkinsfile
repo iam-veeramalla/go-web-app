@@ -42,7 +42,7 @@ pipeline {
                                 script {
                                         withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') 
                                         {
-                                                sh 'docker build -t vinay7944/go-web-app:latest .'
+                                                sh 'docker build -t vinay7944/go-web-app:v1 .'
                                         }
                                 }
                         }
@@ -52,21 +52,21 @@ pipeline {
                         steps{
                                 script{
                                         withDockerRegistry(credentialsId: 'docker-cred',toolName: 'docker'){
-                                                sh "docker push vinay7944/go-web-app:latest"
+                                                sh "docker push vinay7944/go-web-app:v1"
                                         } 
                                 }
                         }
                 }
 
-        stage('Docker deploy to local'){
-                        steps{
-                            script{
-                                withDockerRegistry(credentialsId: 'docker-cred',toolName: 'docker'){
-                                        sh "docker run -d -p 3000:3000 --name gowebapp vinay7944/go-web-app:latest"
-                                }
-                            }
-                        }
-                }       
+        // stage('Docker deploy to local'){
+        //                 steps{
+        //                     script{
+        //                         withDockerRegistry(credentialsId: 'docker-cred',toolName: 'docker'){
+        //                                 sh "docker run -d -p 3000:3000 --name gowebapp vinay7944/go-web-app:latest"
+        //                         }
+        //                     }
+        //                 }
+        //         }       
 
 
      }
