@@ -75,6 +75,10 @@ pipeline {
         stage('Update Helm Chart Tag') {
             steps {
                 script {
+                    // Get the commit ID
+                    def commitId = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    echo "Current commit ID: ${commitId}"
+
                     // Get the current branch name
                     def branchName = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
                     echo "Current branch: ${branchName}"
@@ -88,7 +92,7 @@ pipeline {
                     echo "Checking Helm chart values:"
                     cat helm/go-web-app-chart/values.yaml
                     echo "Updating tag in Helm chart"
-                    sed -i 's/tag: .*/tag: "${BUILD_NUMBER}"/' helm/go-web-app-chart/values.yaml
+                    sed -i 's/tag: .*/tag: "${commitId}"/' helm/go-web-app-chart/values.yaml
                     echo "Updated Helm chart values:"
                     cat helm/go-web-app-chart/values.yaml
                     """
@@ -96,7 +100,7 @@ pipeline {
                     // Add, commit, and push changes
                     sh """
                     git add helm/go-web-app-chart/values.yaml
-                    git commit -m "Update tag in Helm chart"
+                    git commit -m "Update tag in Helm chart with commit ID ${commitId}"
                     git push origin ${branchName}
                     """
                 }
