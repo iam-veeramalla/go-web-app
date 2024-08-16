@@ -89,7 +89,7 @@ pipeline {
                     sh """
                     git add helm/go-web-app-chart/values.yaml
                     git commit -m "Update tag in Helm chart with commit ID ${commitId}"
-                    git push origin HEAD:${branchName}
+                    git push https://vinnu2251:${GITHUB_TOKEN}@github.com/vinnu2251/go-web-app.git HEAD:refs/heads/${branchName}
                     """
                 }
             }
