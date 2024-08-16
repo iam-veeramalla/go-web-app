@@ -77,17 +77,27 @@ pipeline {
                 script {
                     // Get the current branch name
                     def branchName = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    echo "Current branch: ${branchName}"
 
-                    // Update tag in Helm chart
+                    // Debugging steps for updating Helm chart
                     sh """
-                        sed -i 's/tag: .*/tag: "${BUILD_NUMBER}"/' helm/go-web-app-chart/values.yaml
+                    echo "Current directory:"
+                    pwd
+                    echo "Listing files:"
+                    ls -l
+                    echo "Checking Helm chart values:"
+                    cat helm/go-web-app-chart/values.yaml
+                    echo "Updating tag in Helm chart"
+                    sed -i 's/tag: .*/tag: "${BUILD_NUMBER}"/' helm/go-web-app-chart/values.yaml
+                    echo "Updated Helm chart values:"
+                    cat helm/go-web-app-chart/values.yaml
                     """
 
                     // Add, commit, and push changes
                     sh """
-                        git add helm/go-web-app-chart/values.yaml
-                        git commit -m "Update tag in Helm chart"
-                        git push origin ${branchName}
+                    git add helm/go-web-app-chart/values.yaml
+                    git commit -m "Update tag in Helm chart"
+                    git push origin ${branchName}
                     """
                 }
             }
@@ -96,7 +106,8 @@ pipeline {
 
     post {
         always {
-            echo "Complete"
+            echo "Pipeline complete"
+            cleanWs() // Clean workspace after the build
         }
     }
 }
