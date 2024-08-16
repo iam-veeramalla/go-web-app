@@ -24,6 +24,10 @@ pipeline {
                     git config --global user.email "vinaychowdarychitturi@gmail.com"
                     git config --global user.name "vinay chitturi"
                     """
+
+                    // Debugging steps
+                    sh 'git status'           // Show current status of the working directory
+                    sh 'git branch -a'        // List all branches
                 }
             }
         }
