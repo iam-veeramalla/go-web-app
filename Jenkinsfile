@@ -9,9 +9,25 @@ pipeline {
         SCANNER_HOME = tool 'sonar-scanner'
         SONAR_TOKEN = credentials('sonar-cred')
         GITHUB_TOKEN = credentials('git-cred') // Jenkins credential ID for the GitHub token
+        DOCKER_CRED = credentials('docker-cred') // Docker credentials
     }
 
     stages {
+        stage('Checkout Code') {
+            steps {
+                script {
+                    // Checkout the repository
+                    checkout scm
+
+                    // Configure Git for Jenkins
+                    sh """
+                    git config --global user.email "vinaychowdarychitturi@gmail.com"
+                    git config --global user.name "vinay chitturi"
+                    """
+                }
+            }
+        }
+
         stage('Build') {
             steps {
                 sh "go build -o go-web-app"
@@ -55,28 +71,20 @@ pipeline {
         stage('Update Helm Chart Tag') {
             steps {
                 script {
-                    // Checkout the repository
-                    checkout scm
+                    // Get the current branch name
+                    def branchName = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
 
                     // Update tag in Helm chart
-                    sh '''
+                    sh """
                         sed -i 's/tag: .*/tag: "${BUILD_NUMBER}"/' helm/go-web-app-chart/values.yaml
-                    '''
+                    """
 
-                    // Configure Git and commit changes
-                    sh '''
-                        git config --global user.email "vinaychowdarychitturi@gmail.com"
-                        git config --global user.name "vinay chitturi"
+                    // Add, commit, and push changes
+                    sh """
                         git add helm/go-web-app-chart/values.yaml
                         git commit -m "Update tag in Helm chart"
-                    '''
-
-                    // Push changes to the repository
-                    withCredentials([usernamePassword(credentialsId: 'git-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
-                        sh '''
-                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/vinnu2251/go-web-app.git
-                        '''
-                    }
+                        git push origin ${branchName}
+                    """
                 }
             }
         }
