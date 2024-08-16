@@ -14,8 +14,9 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Checkout the code from the GitHub repository
+                // Checkout the code from the GitHub repository and switch to the main branch
                 checkout scm
+                sh 'git checkout main'
             }
         }
 
