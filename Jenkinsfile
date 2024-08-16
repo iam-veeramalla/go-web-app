@@ -8,28 +8,10 @@ pipeline {
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
         SONAR_TOKEN = credentials('sonar-cred')
-        GITHUB_TOKEN = credentials('git-cred') // Your GitHub token
-        DOCKER_CREDENTIALS = credentials('docker-cred') // Docker credentials
+        GITHUB_TOKEN = credentials('git-cred') // Jenkins credential ID for the GitHub token
     }
 
     stages {
-        stage('Checkout Code') {
-            steps {
-                script {
-                    // Use the GitHub token for authentication
-                    withCredentials([string(credentialsId: 'git-cred', variable: 'GITHUB_TOKEN')]) {
-                        sh '''
-                        git config --global url."https://github.com/".insteadOf git@github.com:
-                        git config --global user.email "vinaychowdarychitturi@gmail.com"
-                        git config --global user.name "vinnu2251"
-                        git clone https://github.com/vinnu2251/go-web-app.git
-                        cd go-web-app
-                        '''
-                    }
-                }
-            }
-        }
-
         stage('Build') {
             steps {
                 sh "go build -o go-web-app"
@@ -53,9 +35,8 @@ pipeline {
         stage('Docker Build & Tag') {
             steps {
                 script {
-                    def commitId = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    withDockerRegistry(credentialsId: 'docker-cred') {
-                        sh "docker build -t vinay7944/go-web-app:${commitId} ."
+                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                        sh 'docker build -t vinay7944/go-web-app:v1 .'
                     }
                 }
             }
@@ -64,24 +45,38 @@ pipeline {
         stage('Docker Push Image') {
             steps {
                 script {
-                    def commitId = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    withDockerRegistry(credentialsId: 'docker-cred') {
-                        sh "docker push vinay7944/go-web-app:${commitId}"
+                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                        sh 'docker push vinay7944/go-web-app:v1'
                     }
                 }
             }
         }
 
-        stage('Update Helm Chart with Commit ID') {
+        stage('Update Helm Chart Tag') {
             steps {
                 script {
-                    def commitId = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    sh """
-                    sed -i 's/tag: .*/tag: "${commitId}"/' helm/go-web-app-chart/values.yaml
-                    git add helm/go-web-app-chart/values.yaml
-                    git commit -m "Update tag in Helm chart with commit ID ${commitId}"
-                    git push origin main
-                    """
+                    // Checkout the repository
+                    checkout scm
+
+                    // Update tag in Helm chart
+                    sh '''
+                        sed -i 's/tag: .*/tag: "${BUILD_NUMBER}"/' helm/go-web-app-chart/values.yaml
+                    '''
+
+                    // Configure Git and commit changes
+                    sh '''
+                        git config --global user.email "abhishek@gmail.com"
+                        git config --global user.name "Abhishek Veeramalla"
+                        git add helm/go-web-app-chart/values.yaml
+                        git commit -m "Update tag in Helm chart"
+                    '''
+
+                    // Push changes to the repository
+                    withCredentials([usernamePassword(credentialsId: 'git-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                        sh '''
+                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/your-repo/your-repo-name.git
+                        '''
+                    }
                 }
             }
         }
@@ -89,7 +84,7 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline completed"
+            echo "Complete"
         }
     }
 }
