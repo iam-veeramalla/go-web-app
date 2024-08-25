@@ -1,0 +1,70 @@
+name: CIWorkflow
+#now provide trigger when the pipeline runs similar in jenkins when commits are pushed and build is triggered
+#provide the action for trigger
+
+on: 
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'helm/**'
+
+#Now the jobs, thats the stages i.e; build stage and then code analysus stage and then other stages
+jobs:
+  build:
+    runs-on: ubuntu-latest #VM or container where github action would run the stages, you can use your own runner or use github runner
+    #here defining the runner with ubuntu-latest image
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4 # checkout source code, this is the action provided bu github, use the docs
+
+    - name: Set up Go 1.22
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.22
+
+    - name: Build
+      run: go build -o go-web-app
+
+    - name: Test
+      run: go test ./...
+  
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.56.2
+    
+  push:
+    runs-on: ubuntu-latest
+
+    needs: build
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }} #these secrets ca be setup in github secret manually under Security and then Secrets and variables options
+        password: ${{ secrets.DOCKERHUB_TOKEN }} #you can get the values from dockerhub
+
+    - name: Build and Push action
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/go-web-app:${{github.run_id}} #${{github.run_id}} is auto set when image is pushed

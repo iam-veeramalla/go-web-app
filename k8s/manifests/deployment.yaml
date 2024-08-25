@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-web-app
+  labels:
+    app: go-web-app
+spec:
+  
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-web-app
+  template:
+    metadata:
+      labels:    #this pod specification label is added in the selector of the service so pods can be accessed
+        app: go-web-app
+    spec:
+      imagePullSecrets:
+      - name: my-dockerhub-secret
+      containers:
+      - name: go-web-app
+        image: namansharma8827/go-web-app:v1 # this image is created and built in minkube env in local using setting the env cmd-> eval $(minikube docker-env)
+        ports:
+        - containerPort: 8080
