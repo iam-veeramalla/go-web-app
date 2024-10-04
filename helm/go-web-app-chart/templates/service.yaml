@@ -12,8 +12,4 @@ spec:
     protocol: TCP
   selector:
     app: go-web-app
-<<<<<<< HEAD
   type: ClusterIP
-=======
-  type: ClusterIP
->>>>>>> b17ef0d110626d6cc5b8a5c2c521b683fe1f4265
