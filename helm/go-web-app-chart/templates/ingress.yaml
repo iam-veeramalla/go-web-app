@@ -6,7 +6,10 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
+<<<<<<< HEAD
   ingressClassName: nginx
+=======
+>>>>>>> b17ef0d110626d6cc5b8a5c2c521b683fe1f4265
   rules:
   - host: go-web-app.local
     http:
@@ -17,4 +20,9 @@ spec:
           service:
             name: go-web-app
             port:
+<<<<<<< HEAD
               number: 80
+=======
+              number: 80
+
+>>>>>>> b17ef0d110626d6cc5b8a5c2c521b683fe1f4265
