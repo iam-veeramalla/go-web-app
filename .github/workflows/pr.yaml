@@ -1,0 +1,36 @@
+name: Github PR Audit
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - labeled
+      - unlabeled
+
+  issue_comment:
+    types:
+      - created
+      - edited
+      - deleted
+
+jobs:
+  Audit-Pull-Request:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            const requiredLabels = ['no release notes', 'public release notes'];
+            let labels = [];
+
+            if (context.payload.pull_request) {
+              labels = context.payload.pull_request.labels;
+            } else if (context.payload.issue) {
+              labels = context.payload.issue.labels;
+            }
+
+            if (labels.filter(l => requiredLabels.includes(l.name)).length === 0) {
+              throw new Error(`Required labels: ${requiredLabels.join(', ')}`);
+            }
