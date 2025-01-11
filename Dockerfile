@@ -1,4 +1,4 @@
-FROM golang:1.22.5 as base
+FROM golang:1.22.5 As base
 
 # Set the working directory inside the container
 WORKDIR /app
